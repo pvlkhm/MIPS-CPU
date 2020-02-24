@@ -8,8 +8,7 @@ reg [31:0] memory [0:31];
 
 assign data = memory[addr];
 
-always  @(posedge clk) begin
+always @(posedge clk)
     if (writeMem) memory[addr] <= writeData;
-end
 
 endmodule
