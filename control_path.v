@@ -11,6 +11,7 @@ wire BNE = opcode == 6'b000101;
 wire RTYPE = opcode == 6'b000000;
 wire SLL = funct == 6'b000000;
 wire SW = opcode == 6'b101011;
+wire J = opcode == 6'b000010;
 // Это R тип?
 assign RI = ~(RTYPE || BEQ || BNE);
 // Сдвиг left/right? Сдвиг вообще?
@@ -24,8 +25,10 @@ assign JR = RTYPE && funct == 6'b001000;
 assign JBEQ = (BEQ && zero) || (BNE && ~zero);
 // JAL?
 assign JAL = (opcode == 6'b000011);
+// Любой прямой прыжок
+assign JJRJAL = J || JR || JAL;
 // Запись в память и в регистровый файл (BEQ BNE SW J JR)
-assign writeReg = ~(BEQ || BNE || SW || opcode == 6'b000010 || JR);
+assign writeReg = ~(BEQ || BNE || SW || J || JR);
 assign writeMem = SW;
 
 // Выбор операции для ALU

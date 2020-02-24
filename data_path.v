@@ -50,7 +50,7 @@ assign  opcode = cmd[31:26],
 wire [31:0] immd32;
 assign immd32 = {{16{immd[15]}}, immd};
 // Выбор нужного адреса записи для REGFILE
-assign wa = JAL ? 5'd31 : (RI ? rd2 : rd1);
+assign wa = JAL ? 5'd31 : (RI ? rdI : rdR);
 // Выбор второго (b) значения ALU + сдвинутый rt 
 assign b = RI ? immd32 : rd2;
 assign shiftRt = SRL ? rd2 >> shamt : rd2 << shamt;
@@ -60,7 +60,7 @@ assign addrData = SHIFT ? shiftRt : c;
 assign wd = LW ? data : addrData;
 // Выбор следующей команды для PC
 assign addrAdd4 = addr + 4;
-assign addrDirect = JR ? rd1 : {addr[31:28], jaddr, 4'b0000};
+assign addrDirect = JR ? rd1 : {addr[31:28], jaddr, 2'b00};
 assign addrRelate = JBEQ ? ((immd32 << 2) + addrAdd4) : addrAdd4;
 assign nextaddr = JJRJAL ? addrDirect : addrRelate;
 

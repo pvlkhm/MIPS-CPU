@@ -1,10 +1,15 @@
+// Little Endian
+// Побайтная адресация
 module cmdmem(
     input [31:0] addr,
     output [31:0] cmd
 );
 
-reg [31:0] memory [0:31];
+initial $readmemb("./_memory/cmd.mem", memory);
 
-assign cmd = memory[addr];
+reg [7:0] memory [0:32*4-1];
+
+assign cmd = {memory[addr + 3], memory[addr + 2], memory[addr + 1], memory[addr]};
+
 
 endmodule
