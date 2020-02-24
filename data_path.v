@@ -57,7 +57,7 @@ assign shiftRt = SRL ? rd2 >> shamt : rd2 << shamt;
 // Выбор адреса для Data Memory
 assign addrData = SHIFT ? shiftRt : c;
 // Выбор значения записи для REGFILE
-assign wd = LW ? data : addrData;
+assign wd = JAL ? addrAdd4 : (LW ? data : addrData);
 // Выбор следующей команды для PC
 assign addrAdd4 = addr + 4;
 assign addrDirect = JR ? rd1 : {addr[31:28], jaddr, 2'b00};
