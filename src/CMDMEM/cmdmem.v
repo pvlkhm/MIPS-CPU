@@ -5,7 +5,7 @@ module cmdmem(
     output [31:0] cmd
 );
 
-initial $readmemb("./_memory/cmd.mem", memory);
+initial $readmemb("./memory/cmd.mem", memory);
 
 reg [7:0] memory [0:32*4-1];
 

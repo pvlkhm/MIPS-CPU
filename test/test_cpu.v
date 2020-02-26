@@ -1,11 +1,11 @@
-module test_main();
+module test_cpu();
 
 reg clk, rst;
-main testee(.clk(clk), .rst(rst));
+cpu testee(.clk(clk), .rst(rst));
 
 initial begin
     $dumpfile("dump.vcd");
-    $dumpvars(0, test_main);
+    $dumpvars(0, test_cpu);
 end
 initial #40 $finish;
 initial #0 clk = 0;

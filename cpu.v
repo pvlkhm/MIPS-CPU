@@ -1,4 +1,4 @@
-module main(
+module cpu(
     input clk, rst
 );
 

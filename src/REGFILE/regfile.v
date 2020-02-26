@@ -20,6 +20,6 @@ always @(posedge clk) begin
     else if (writeReg && wa != 32'd0) list[wa] <= wd;
 end
 
-always @(posedge clk) $writememb("./_memory/reg.mem", list);
+always @(posedge clk) $writememb("./memory/reg.mem", list);
 
 endmodule
