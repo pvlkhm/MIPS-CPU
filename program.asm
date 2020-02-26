@@ -1,8 +1,7 @@
-add $s0, $t0, $t1
+addi $t0, $0, 127
 nop
 and $s0, $s0, $s2
 nop
-sll $t0, $s0, 2
+sll $s0, $t0, 2
 nop
-addi $s0, $t1, 35
-jr $s1
+addi $s1, $t0, 1
