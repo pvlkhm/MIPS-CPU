@@ -13,7 +13,7 @@ findOpcode() {
     ori)  opcode="001101";;
     xori) opcode="001110";;
     beq)  opcode="000100";;
-    bnq)  opcode="000101";;
+    bne)  opcode="000101";;
     lw)   opcode="100011";;
     sw)   opcode="101011";;
     j)    opcode="000010";;
@@ -99,7 +99,7 @@ while read line || [[ -n $line ]]; do
         echo
         } >> $program
         ;;
-    addi|andi|ori|xori|beq|bne|lw|sw)
+    addi|andi|ori|xori|beq|bne)
         {
         op=${line%% *}
         findOpcode $op
@@ -113,6 +113,25 @@ while read line || [[ -n $line ]]; do
         findReg ${rd#$}
         echo -n $reg
         immd=${line##*, }
+        printf "%016.16s" $(echo "obase=2;$immd" | bc)
+        echo
+        } >> $program
+        ;;
+    lw|sw)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        rs=${line##*(}
+        rs=${rs%%)*}
+        findReg ${rs#$}
+        echo -n $reg
+        rd=${line#* }
+        rd=${rd%%,*}
+        findReg ${rd#$}
+        echo -n $reg
+        immd=${line##*, }
+        immd=${immd%%(*}
         printf "%016.16s" $(echo "obase=2;$immd" | bc)
         echo
         } >> $program

@@ -7,7 +7,7 @@ initial begin
     $dumpfile("dump.vcd");
     $dumpvars(0, test_cpu);
 end
-initial #40 $finish;
+initial #66 $finish;
 initial #0 clk = 0;
 initial #0 rst = 1;
 initial #2 rst = 0;

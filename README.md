@@ -4,11 +4,13 @@
 
 Поддерживаемые инструкции:
 
-`add sub and or xor sll srl`
+`add sub and or xor beq bne sll srl`
 
 `addi andi ori xori lw sw`
 
 `j jr jal`
+
+`nop`
 
 ### Запуск
 

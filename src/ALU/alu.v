@@ -5,7 +5,7 @@ module alu(
     output zero
 );
 
-assign zero = |c;
+assign zero = ~(|c);
 
 always @(*) begin
     case (op)
