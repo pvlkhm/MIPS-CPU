@@ -4,7 +4,7 @@ init: out
 	./a.out
 
 out: program
-	iverilog cpu.v src/data_path.v src/control_path.v src/ALU/alu.v src/CMDMEM/cmdmem.v src/DATAMEM/datamem.v src/PC/pc.v src/REGFILE/regfile.v test/test_cpu.v
+	iverilog cpu.v src/data_path.v src/control_path.v src/ALU/alu.v src/CMDMEM/cmdmem.v src/DATAMEM/datamem.v src/PC/pc.v src/REGFILE/regfile.v test/test_cpu.v src/hazard_mngr.v
 
 program:
 	assembler/mipsasm.sh program.asm assembler/program.txt
