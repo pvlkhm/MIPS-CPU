@@ -29,4 +29,4 @@ beq $t0, $t1, 1
 bne $t0, $t1, 1
 sw $t1, 8($0)
 sw $t1, 12($0)
-nop
+addi $t8, $t8, 1

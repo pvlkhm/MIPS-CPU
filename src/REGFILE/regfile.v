@@ -13,15 +13,13 @@ reg [31:0] list [0:31];
 assign rd1 = list[ra1];
 assign rd2 = list[ra2];
 
-always @(posedge clk) begin
+// Запись стоит производить по negedge'у такта (Т.к. иначе данные просаивают целый такт)
+// Чтение комбинационное — значит в конце такта на выходах будет нужное значение
+always @(negedge clk) begin
     if (rst) for (i = 0; i < 32; i = i+1) begin 
         list[i] <= 32'd0;
     end
-end
-// Теперь запись стоит производить по negedge'у такта (Т.к. иначе данные просаивают целый такт)
-// Чтение комбинационное — значит в конце такта на выходах будет нужное значение
-always @(negedge clk) begin
-    if (writeReg && wa != 32'd0) list[wa] <= wd;
+    else if (writeReg && wa != 32'd0) list[wa] <= wd;
 end
 
 always @(posedge clk) $writememb("./memory/reg.mem", list);

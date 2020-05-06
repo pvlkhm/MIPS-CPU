@@ -75,16 +75,16 @@ assign JAL = JAL_D;
 Decode -> Execute
 */
 // Регистр-задержка
-reg [8:0] d2e;
+reg [8:0] ctrlExecute;
 // Дальше по конвейеру
-assign writeReg_E = d2e[8];
-assign LW_E = d2e[7];
-assign writeMem_E = d2e[6];
+assign writeReg_E = ctrlExecute[8];
+assign LW_E = ctrlExecute[7];
+assign writeMem_E = ctrlExecute[6];
 // Выдача из EXECUTE стадии
-assign SHIFT = d2e[5];
-assign op = d2e[4:2];
-assign SRL = d2e[1];
-assign RI = d2e[0];
+assign SHIFT = ctrlExecute[5];
+assign op = ctrlExecute[4:2];
+assign SRL = ctrlExecute[1];
+assign RI = ctrlExecute[0];
 assign wriSigEXEC = writeReg_E;
 assign wriRegFromMemEXEC = LW_E;
 
@@ -93,12 +93,12 @@ assign wriRegFromMemEXEC = LW_E;
 Execute -> Memory
 */
 // Регистр-задержка
-reg [2:0] e2m;
+reg [2:0] ctrlMemory;
 // Дальше по конвейеру
-assign writeReg_M = e2m[2];
-assign LW_M = e2m[1];
+assign writeReg_M = ctrlMemory[2];
+assign LW_M = ctrlMemory[1];
 // Выдача из MEMORY стадии
-assign writeMem = e2m[0];
+assign writeMem = ctrlMemory[0];
 assign wriSigMEMO = writeReg_M;
 assign wriRegFromMemMEMO = LW_M;
 
@@ -106,10 +106,10 @@ assign wriRegFromMemMEMO = LW_M;
 Memory -> WriteBack
 */
 // Регистр-задержка
-reg [1:0] m2w;
+reg [1:0] ctrlWriteback;
 // Выдача из WRITEBACK стадии
-assign writeReg = m2w[1];
-assign LW = m2w[0];
+assign writeReg = ctrlWriteback[1];
+assign LW = ctrlWriteback[0];
 assign wriSigWRIT = writeReg;
 
 /*
@@ -117,14 +117,14 @@ assign wriSigWRIT = writeReg;
 */
 always @(posedge clk) begin
     if (rst) begin
-        d2e <= 9'd0;
-        e2m <= 3'd0;
-        m2w <= 2'd0;
+        ctrlExecute <= 9'd0;
+        ctrlMemory <= 3'd0;
+        ctrlWriteback <= 2'd0;
     end else begin
         // Если остановка конвейера -> пускание "пузыря"
-        d2e <= stall ? 9'd0 : {writeReg_D, LW_D, writeMem_D, SHIFT_D, op_D, SRL_D, RI_D};
-        e2m <= {writeReg_E, LW_E, writeMem_E};
-        m2w <= {writeReg_M, LW_M};
+        ctrlExecute <= stall ? 9'd0 : {writeReg_D, LW_D, writeMem_D, SHIFT_D, op_D, SRL_D, RI_D};
+        ctrlMemory <= {writeReg_E, LW_E, writeMem_E};
+        ctrlWriteback <= {writeReg_M, LW_M};
     end
 end
 
