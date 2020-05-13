@@ -9,10 +9,10 @@ module control_path(
     input [5:0] opcode, funct,
     input zero,
     output JBEQ, J, JAL, JR, RI, LW, SHIFT, SRL,
-    output writeReg, writeMem,
+    output writeReg, writeMem, readMem,
     output [2:0] op,
     /* Значения на выход в Управление Конфликтами (Hazard Manager) и вход*/
-    input stall,
+    input stall, stop,
     output wriSigEXEC, wriSigMEMO, wriSigWRIT,
     output wriMemorySigEXEC, wriMemorySigMEMO,
     output wriRegFromMemEXEC, wriRegFromMemMEMO
@@ -99,6 +99,7 @@ assign writeReg_M = ctrlMemory[2];
 assign LW_M = ctrlMemory[1];
 // Выдача из MEMORY стадии
 assign writeMem = ctrlMemory[0];
+assign readMem = LW_M;
 assign wriSigMEMO = writeReg_M;
 assign wriRegFromMemMEMO = LW_M;
 
@@ -120,7 +121,13 @@ always @(posedge clk) begin
         ctrlExecute <= 9'd0;
         ctrlMemory <= 3'd0;
         ctrlWriteback <= 2'd0;
-    end else begin
+    end 
+    else if (stop) begin
+        ctrlExecute <= ctrlExecute;
+        ctrlMemory <= ctrlMemory;
+        ctrlWriteback <= ctrlWriteback;
+    end
+    else begin
         // Если остановка конвейера -> пускание "пузыря"
         ctrlExecute <= stall ? 9'd0 : {writeReg_D, LW_D, writeMem_D, SHIFT_D, op_D, SRL_D, RI_D};
         ctrlMemory <= {writeReg_E, LW_E, writeMem_E};

@@ -11,6 +11,7 @@ wire [1:0] bypassE1, bypassE2;
 wire flush;
 wire wriRegFromMemEXEC, wriRegFromMemMEMO;
 wire stall;
+wire stopCPU;
 
 // Control+Data wires
 wire JBEQ, J, JAL, JR, RI, LW, SHIFT, SRL;
@@ -27,15 +28,16 @@ hazard_mngr hazard_mngr(.rsDECO(rsDECO), .rtDECO(rtDECO),
                         .bypassE1(bypassE1), .bypassE2(bypassE2),
                         .JBEQ(JBEQ),
                         .flush(flush),
+                        .stopCPU(stopCPU),
                         .JAL(JAL), .J(J), .JR(JR),
                         .wriRegFromMemEXEC(wriRegFromMemEXEC), .wriRegFromMemMEMO(wriRegFromMemMEMO),
-                        .stall(stall));  
+                        .stall(stall), .stop(stop));  
 
 data_path data_path(.clk(clk), .rst(rst),
                     .JBEQ(JBEQ), .J(J), .JAL(JAL), .JR(JR), .RI(RI), .LW(LW), .SHIFT(SHIFT), .SRL(SRL),
-                    .writeReg(writeReg), .writeMem(writeMem), .op(op),
+                    .writeReg(writeReg), .writeMem(writeMem), .readMem(readMem), .op(op),
                     .opcode(opcode), .funct(funct), .zero(zero),
-                    .stall(stall), .flush(flush),
+                    .stall(stall), .stop(stop), .flush(flush), .stopCPU(stopCPU),
                     .bypassD1(bypassD1), .bypassD2(bypassD2),
                     .bypassE1(bypassE1), .bypassE2(bypassE2),
                     .rsDECO(rsDECO), .rtDECO(rtDECO),
@@ -46,9 +48,9 @@ control_path control_path(  .clk(clk), .rst(rst),
                             .opcode(opcode), .funct(funct),
                             .zero(zero),
                             .JBEQ(JBEQ), .J(J), .JAL(JAL), .JR(JR), .RI(RI), .LW(LW), .SHIFT(SHIFT), .SRL(SRL),
-                            .writeReg(writeReg), .writeMem(writeMem),
+                            .writeReg(writeReg), .writeMem(writeMem), .readMem(readMem),
                             .op(op),
-                            .stall(stall),
+                            .stall(stall), .stop(stop),
                             .wriSigEXEC(wriSigEXEC), .wriSigMEMO(wriSigMEMO), .wriSigWRIT(wriSigWRIT),
                             .wriMemorySigEXEC(wriMemorySigEXEC), .wriMemorySigMEMO(wriMemorySigMEMO),
                             .wriRegFromMemEXEC(wriRegFromMemEXEC), .wriRegFromMemMEMO(wriRegFromMemMEMO));

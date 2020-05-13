@@ -17,12 +17,13 @@ bypassE1/2 - выбор пришедшего байпаса в EXECUTE стад�
 module data_path(
     input clk, rst, 
     input JBEQ, J, JAL, JR, RI, LW, SHIFT, SRL,
-    input writeReg, writeMem,
+    input writeReg, writeMem, readMem,
     input [2:0] op,
     output [5:0] opcode, funct,
     output zero,
+    output stopCPU,
     /* Сигналы управления от/в Управления Конфликтами */
-    input stall, flush,
+    input stall, stop, flush,
     input bypassD1, bypassD2,
     input [1:0] bypassE1, bypassE2,
     output [4:0] rsDECO, rtDECO,
@@ -172,7 +173,12 @@ wire [31:0] wd_M = e2m[36:5];
 wire [4:0] regAddr_M = e2m[4:0];
 
 wire [31:0] dataFromMem_M;
-datamem datamem(.clk(clk), .writeMem(writeMem), .addr(res_M), .writeData(wd_M), .data(dataFromMem_M));
+
+cache cache(
+    .clk(clk), .rst(rst), .address(res_M), .writeData(wd_M),
+    .writeMem(writeMem), .readMem(readMem), .stopCPU(stopCPU),
+    .data(dataFromMem_M)
+);
 
 // Выдача в Управление Конфликтами
 assign wriRegMEMO = regAddr_M;
@@ -200,7 +206,14 @@ always @(posedge clk) begin
         d2e <= 116'd0;
         e2m <= 69'd0;
         m2w <= 69'd0;
-    end else begin
+    end
+    else if (stop) begin
+        f2d <= f2d;
+        d2e <= d2e;
+        e2m <= e2m;
+        m2w <= m2w;
+    end 
+    else begin
         // Отчистка от ошибки предсказателя || Приостановка конвейера || Работа по плану
         f2d <= flush ? 68'd0 : stall ? f2d : {cmd_F, addrHigh_F, addrAdd4_F};
         // Приостановка конвейера || Работа по плану

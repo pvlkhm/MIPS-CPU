@@ -11,6 +11,7 @@ module hazard_mngr(
     input [4:0] rsEXEC, rtEXEC,
     input [4:0] wriRegEXEC, wriRegMEMO, wriRegWRIT,
     input wriSigEXEC, wriSigMEMO, wriSigWRIT,
+    input stopCPU,
     output bypassD1, bypassD2,
     output reg [1:0] bypassE1, bypassE2,
     /* Управление предсказателем */
@@ -19,7 +20,7 @@ module hazard_mngr(
     /* Управление остановкой конвейера */
     input J, JR, JAL,
     input wriRegFromMemEXEC, wriRegFromMemMEMO,
-    output stall
+    output stall, stop
 );
 
 /* Bypass управление */
@@ -29,11 +30,11 @@ module hazard_mngr(
 // Если участвующий в E операции регистр находится на M или W в очереди записи -> доставляем прямиком в E
 always @(*) begin
     if (rsEXEC != 5'd0 && (rsEXEC == wriRegMEMO && wriSigMEMO)) bypassE1 = 2'b10;
-    else if (rsEXEC != 5'd0 && (rsEXEC == wriRegWRIT && wriRegWRIT)) bypassE1 = 2'b01;
+    else if (rsEXEC != 5'd0 && (rsEXEC == wriRegWRIT && wriSigWRIT)) bypassE1 = 2'b01;
     else bypassE1 = 2'b00;
 
     if (rtEXEC != 5'd0 && (rtEXEC == wriRegMEMO && wriSigMEMO)) bypassE2 = 2'b10;
-    else if (rtEXEC != 5'd0 && (rtEXEC == wriRegWRIT && wriRegWRIT)) bypassE2 = 2'b01;
+    else if (rtEXEC != 5'd0 && (rtEXEC == wriRegWRIT && wriSigWRIT)) bypassE2 = 2'b01;
     else bypassE2 = 2'b00;
 end
 // В DECODE стадию
@@ -70,5 +71,6 @@ wire stallJAL = JAL && wriSigWRIT;
 
 
 assign stall = stallLW || stallJBEQ || stallJAL;
+assign stop = stopCPU;
 
 endmodule
