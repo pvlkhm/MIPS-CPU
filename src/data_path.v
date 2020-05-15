@@ -62,7 +62,8 @@ wire [31:0] muxJJR = J || JR ? muxJR : muxJBEQ;
 assign nextaddr_F = JAL ? addrJ_D : muxJJR;
 
 // Выключаем PC если идет остановка конвейера (stall)
-pc pc(.stall(stall), .clk(clk), .rst(rst), .nextaddr(nextaddr_F), .addr(addr_F));
+wire pcStall = stall || stop;
+pc pc(.stall(pcStall), .clk(clk), .rst(rst), .nextaddr(nextaddr_F), .addr(addr_F));
 cmdmem cmdmem(.addr(addr_F), .cmd(cmd_F));
 
 wire [3:0] addrHigh_F = addr_F[31:28];
