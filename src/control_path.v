@@ -8,9 +8,10 @@ module control_path(
     input clk, rst,
     input [5:0] opcode, funct,
     input zero,
-    output JBEQ, J, JAL, JR, RI, LW, SHIFT, SRL,
+    output BEQBNE, JBEQ, J, JAL, JR, RI, LW, SHIFT, SRL, RFE, MFC,
     output writeReg, writeMem, readMem,
     output [2:0] op,
+    output reg wrongInst,
     /* Значения на выход в Управление Конфликтами (Hazard Manager) и вход*/
     input stall, stop,
     output wriSigEXEC, wriSigMEMO, wriSigWRIT,
@@ -37,11 +38,35 @@ wire LW_D = opcode == 6'b100011;
 wire JR_D = RTYPE_D && funct == 6'b001000;
 // BEQ/BNE прыжок
 wire JBEQ_D = (BEQ_D && zero) || (BNE_D && ~zero);
+wire BEQBNE = BEQ_D || BNE_D;
 // JAL?
 wire JAL_D = opcode == 6'b000011;
+// RFE — возврат по значению в EPC
+wire RFE_D = opcode == 6'b010000;
+// MFC — загрузка из Cause регистра в регистровый файл
+wire MFC_D = opcode == 6'b011000;
 // Запись в память и в регистровый файл НЕ: (BEQ BNE SW J JR "JAL")
 wire writeMem_D = SW_D;
-wire writeReg_D = ~(BEQ_D || BNE_D || SW_D || J_D || JR_D || JAL_D);
+wire writeReg_D = ~(BEQ_D || BNE_D || SW_D || J_D || JR_D || JAL_D || MFC_D);
+// НЕВЕРНАЯ ИНСТРУКЦИЯ
+always @(*) begin
+    casex({opcode, funct})
+    12'b000000_0000x0, // NOP / SLL / SRL
+    12'b000000_100x00, // ADD / AND
+    12'b000000_100x10, // SUB / XOR
+    12'b001x00_xxxxxx, // ADDI / ANDI
+    12'b00010x_xxxxxx, // BEQ / BNE
+    12'b00001x_xxxxxx, // J / JAL
+    12'b000000_001000, // JR
+    12'b000000_100101, // OR
+    12'b001110_xxxxxx, // XORI
+    12'b001101_xxxxxx, // ORI
+    12'b01x000_xxxxxx, // RFE / MFC
+    12'b10x011_xxxxxx:  wrongInst = 1'b0; // LW / SW
+    default:            wrongInst = 1'b1;
+    endcase
+end
+
 // Выбор операции для ALU
 reg [2:0] op_D;
 always @(*) begin
@@ -70,6 +95,8 @@ assign JBEQ = JBEQ_D;
 assign J = J_D;
 assign JR = JR_D;
 assign JAL = JAL_D;
+assign RFE = RFE_D;
+assign MFC = MFC_D;
 
 /*
 Decode -> Execute

@@ -7,7 +7,8 @@ module cmdmem(
 
 initial $readmemb("./memory/cmd.mem", memory);
 
-reg [7:0] memory [0:32*4-1];
+// 32 для обработчика прерываний, 32 для программы
+reg [7:0] memory [0:(32+32)*4-1];
 
 assign cmd = {memory[addr + 3], memory[addr + 2], memory[addr + 1], memory[addr]};
 

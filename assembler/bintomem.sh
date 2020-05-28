@@ -4,7 +4,7 @@ file=$1
 memory=$2
 `` > $memory
 
-i=32
+i=64
 
 while read line || [[ -n $line ]]; do
     {

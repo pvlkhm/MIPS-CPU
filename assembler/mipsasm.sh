@@ -1,7 +1,9 @@
 #!/bin/bash
 
 file=$1
-program=$2
+interrupt=$2
+program=$3
+
 `` > $program
 
 #Поиск opcode
@@ -19,6 +21,8 @@ findOpcode() {
     j)    opcode="000010";;
     jal)  opcode="000011";;
     jr)   opcode="000000";;
+    rfe)  opcode="010000";;
+    mfc)  opcode="011000";;
     *)    opcode="xxxxxx";;
     esac
 }
@@ -54,6 +58,155 @@ findReg() {
     *) reg="xxxxx";;
     esac
 }
+
+j=32
+
+while read line || [[ -n $line ]]; do
+    cmd=${line%% *}
+    j=$(( j - 1 ))
+    case $cmd in
+    add|sub|and|or|xor)
+        {
+        echo -n "000000"
+        rs=${line#*, }
+        rs=${rs%%,*}
+        findReg ${rs#$}
+        echo -n $reg
+        rt=${line##*, }
+        findReg ${rt#$}
+        echo -n $reg
+        rd=${line#* }
+        rd=${rd%%,*}
+        findReg ${rd#$}
+        echo -n $reg
+        echo -n "00000"
+        f=${line%% *}
+        findFunct $f
+        echo -n $funct
+        echo
+        } >> $program
+        ;;
+    sll|srl)
+        {
+        echo -n "000000"
+        echo -n "00000" 
+        rt=${line#*, }
+        rt=${rt%%,*}
+        findReg ${rt#$}
+        echo -n $reg
+        rd=${line#* }
+        rd=${rd%%,*}
+        findReg ${rd#$}
+        echo -n $reg
+        shamt=${line##*, }
+        printf "%05.5s" $(echo "obase=2;$shamt" | bc)
+        f=${line%% *}
+        findFunct $f
+        echo -n $funct
+        echo
+        } >> $program
+        ;;
+    addi|andi|ori|xori|beq|bne)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        rs=${line#*, }
+        rs=${rs%%,*}
+        findReg ${rs#$}
+        echo -n $reg
+        rd=${line#* }
+        rd=${rd%%,*}
+        findReg ${rd#$}
+        echo -n $reg
+        immd=${line##*, }
+        printf "%016.16s" $(echo "obase=2;$immd" | bc)
+        echo
+        } >> $program
+        ;;
+    lw|sw)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        rs=${line##*(}
+        rs=${rs%%)*}
+        findReg ${rs#$}
+        echo -n $reg
+        rd=${line#* }
+        rd=${rd%%,*}
+        findReg ${rd#$}
+        echo -n $reg
+        immd=${line##*, }
+        immd=${immd%%(*}
+        printf "%016.16s" $(echo "obase=2;$immd" | bc)
+        echo
+        } >> $program
+        ;;
+    j|jal)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        addr=${line##* }
+        printf "%026.26s" $(echo "obase=2;$addr" | bc) 
+        echo
+        } >> $program
+        ;;
+    jr)
+        {
+        echo -n "000000"
+        rs=${line##* }
+        findReg ${rs#$}
+        echo -n $reg
+        echo -n "00000"
+        echo -n "00000"
+        echo -n "00000"
+        f=${line%% *}
+        findFunct $f
+        echo -n $funct
+        echo
+        } >> $program
+        ;;
+    rfe)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        echo -n "00000000000000000000000000"
+        echo
+        } >> $program
+        ;;
+    mfc)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        echo -n "00000"
+        rt=${line##* }
+        findReg ${rt#$}
+        echo -n $reg
+        echo -n "0000000000000000"
+        echo
+        } >> $program
+        ;;
+    nop)
+        for i in {1..32}; do echo -n "0" >> $program; done
+        echo >> $program
+        ;;
+    *)
+        echo "unknown command in ${line}"
+        exit
+        ;;
+    esac
+done < $interrupt
+
+while [[ $j -ne 0 ]]; do
+    echo -n "00000000000000000000000000000000" >> $program
+    echo >> $program
+    j=$(( j - 1 ))
+done
+
 
 while read line || [[ -n $line ]]; do
     cmd=${line%% *}
@@ -161,8 +314,34 @@ while read line || [[ -n $line ]]; do
         echo
         } >> $program
         ;;
+    rfe)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        echo -n "00000000000000000000000000"
+        echo
+        } >> $program
+        ;;
+    mfc)
+        {
+        op=${line%% *}
+        findOpcode $op
+        echo -n $opcode
+        echo -n "00000"
+        rt=${line##* }
+        findReg ${rt#$}
+        echo -n $reg
+        echo -n "0000000000000000"
+        echo
+        } >> $program
+        ;;
     nop)
         for i in {1..32}; do echo -n "0" >> $program; done
+        echo >> $program
+        ;;
+    wrong)
+        for i in {1..32}; do echo -n "1" >> $program; done
         echo >> $program
         ;;
     *)
@@ -171,5 +350,3 @@ while read line || [[ -n $line ]]; do
         ;;
     esac
 done < $file
-
-

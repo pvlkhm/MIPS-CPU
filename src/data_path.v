@@ -8,6 +8,10 @@ RI – R или I инструкция
 LW – Инструкция lw
 SHIFT – Инструкиця сдвига
 SRL – Выбор сдвига вправо (srl)
+RFE — Jump по EPC регистру
+MFC — Загрузка из Cause в регфайл
+wrongInst — неверная инструкция
+irq — внешнее прерывание
 writeReg/writeMem – разрешение записи по clk в память
 stall - остановка ковейера
 flush - очистка от ложного ветвления (BEQ/BNE спекуляция) 
@@ -16,9 +20,11 @@ bypassE1/2 - выбор пришедшего байпаса в EXECUTE стад�
 */
 module data_path(
     input clk, rst, 
-    input JBEQ, J, JAL, JR, RI, LW, SHIFT, SRL,
+    input JBEQ, J, JAL, JR, RI, LW, SHIFT, SRL, RFE, MFC,
     input writeReg, writeMem, readMem,
     input [2:0] op,
+    input wrongInst,
+    input irq,
     output [5:0] opcode, funct,
     output zero,
     output stopCPU,
@@ -45,9 +51,30 @@ reg [68:0] e2m;
 // MEMORY -> WRITEBACK (результат:32 + изПамяти:32 + регАдрес:5)
 reg [68:0] m2w;
 
+/*
+Регистры для хранения и передачи причины/адреса прерывания/(команды с прерыванием)
+*/
+reg [31:0] exD, exE, exM;
+reg [31:0] pcD, pcE, pcM;
+
+/*
+Cause регистр — для хранения причины прерывания
+EPC регистр — для хранения адреса счетчика (команды с прерыванием)
+inHandler — регистр блокирования прерываний
+interr — сигнал наличия прерывания
+*/
+reg [31:0] cause;
+reg [31:0] epc;
+reg inHandler;
+wire interr = (|exM || irq) && ~inHandler;
 
 /*
 FETCH стадия
+*/
+
+/*
+Обработчик прерываний находится в адресах с 0 по 124 (0 — 31 по словам)
+С 128 (32 по словам) идет пользовательская программа
 */
 
 // PC + CMDMEM wires
@@ -59,7 +86,11 @@ wire [31:0] addrAdd4_F = addr_F + 4;
 wire [31:0] muxJBEQ = JBEQ ? addrJBEQ_D : addrAdd4_F;
 wire [31:0] muxJR = JR ? addrJR_D : addrJ_D; 
 wire [31:0] muxJJR = J || JR ? muxJR : muxJBEQ;
-assign nextaddr_F = JAL ? addrJ_D : muxJJR;
+// Прерывание -> в обработчик (По адресу 0x0)
+// JAL -> Прыжок
+// RFE -> Прыжок на адрес из EPC (возврат из обработчика прерываний)
+// Иначе -> логика конвейера
+assign nextaddr_F = interr ? 32'd0 : JAL ? addrJ_D : RFE ? epc : muxJJR;
 
 // Выключаем PC если идет остановка конвейера (stall)
 wire pcStall = stall || stop;
@@ -94,10 +125,12 @@ assign  opcode_D = cmd_D[31:26],
 
 // REGFILE wires
 wire [31:0] rd1_D, rd2_D;
-wire [4:0] wa_D = writeReg ? regAddr_W : 5'd31;
-wire [31:0] wd_D = writeReg ? data2write_W : addrAdd4_D;
+// MFC -> Записываем в регистр (из rt)
+wire [4:0] wa_D = MFC ? rt_D : writeReg ? regAddr_W : 5'd31;
+// MFC -> Записываем значение Cause
+wire [31:0] wd_D = MFC ? cause : writeReg ? data2write_W : addrAdd4_D;
 // Запись в регистр и при WriteBack и при JAL (Конфликт решается остановкой)
-wire writeRegPipelined = writeReg || JAL;
+wire writeRegPipelined = writeReg || JAL || MFC;
 regfile regfile(.clk(clk), .rst(rst), .writeReg(writeRegPipelined),
                 .ra1(rs_D), .ra2(rt_D), .wa(wa_D), .wd(wd_D),
                 .rd1(rd1_D), .rd2(rd2_D));
@@ -199,6 +232,26 @@ wire [31:0] data2write_W = LW ? dataFromMem_W : res_W;
 assign wriRegWRIT = regAddr_W;
 
 
+
+// Обновление Cause и EPC регистров (если есть причины)
+always @(posedge clk) begin
+    if (rst || RFE) begin // Сброс или выход из обработчика
+        cause <= 32'd0;
+        epc <= 32'd0;
+        inHandler <= 1'd0;
+    end
+    else if (~inHandler && irq) begin // Внешнее (НУЖНО БЛОКИРОВАТЬ!)
+        cause <= 32'd2;
+        epc <= pcM;
+        inHandler <= 1'd1;
+    end
+    else if (~inHandler && interr) begin // Есть ли вообще прерывание (НУЖНО БЛОКИРОВАТЬ!)
+        cause <= exM;
+        epc <= pcM;
+        inHandler <= 1'd1;
+    end
+end
+
 // Обновление всех регистров (Проход данных с задержкой)
 always @(posedge clk) begin
     // Сброс — все регистры обнуляются
@@ -215,12 +268,47 @@ always @(posedge clk) begin
         m2w <= m2w;
     end 
     else begin
-        // Отчистка от ошибки предсказателя || Приостановка конвейера || Работа по плану
-        f2d <= flush ? 68'd0 : stall ? f2d : {cmd_F, addrHigh_F, addrAdd4_F};
-        // Приостановка конвейера || Работа по плану
-        d2e <= stall ? 116'd0 : {rd1_D, rd2_D, shamt_D, rs_D, rdR_D, rdI_D, immd32_D};
-        e2m <= {res_E, b_pre_E, regAddr_E};
-        m2w <= {res_M, dataFromMem_M, regAddr_M}; 
+        // Обработка прерывания || Очистка от ошибки предсказателя || Приостановка конвейера || Работа по плану
+        f2d <= interr ? 68'd0 : stall ? f2d : flush ? 68'd0 : {cmd_F, addrHigh_F, addrAdd4_F};
+        // Обработка прерывания || Приостановка конвейера || Работа по плану
+        d2e <= interr ? 116'd0 : stall ? 116'd0 : {rd1_D, rd2_D, shamt_D, rs_D, rdR_D, rdI_D, immd32_D};
+        // Обработка прерывания || Работа по плану
+        e2m <= interr ? 69'd0 : {res_E, b_pre_E, regAddr_E};
+        // Обработка прерывания || Работа по плану
+        m2w <= interr ? 69'd0 : {res_M, dataFromMem_M, regAddr_M}; 
+    end
+end
+
+// Обновления всех регистров обработки прерываний
+// Коды прерываний
+// 00 — все хорошо
+// 01 — неверный опкод
+// 10 — внешнее прерывание
+always @(posedge clk) begin
+    if (rst) begin
+        exD <= 32'd0;
+        exE <= 32'd0;
+        exM <= 32'd0;
+        pcD <= 32'd0;
+        pcE <= 32'd0;
+        pcD <= 32'd0;
+    end
+    else if (stop) begin
+        exD <= exD;
+        exE <= exE;
+        exM <= exM;
+        pcD <= pcD;
+        pcE <= pcE;
+        pcD <= pcD;
+    end
+    else begin
+        exD <= interr ? 32'd0 : flush ? 32'd0 : stall ? exD : 32'd0;
+        exE <= interr ? 32'd0 : stall ? 32'd0 : wrongInst ? 32'd1 : 32'd0; // Если неверная инструкция — выставляем код
+        exM <= interr ? 32'd0 : exE;
+
+        pcD <= interr ? 32'd0 : flush ? 32'd0 : stall ? pcD : addr_F; // Адрес текущей команды на вход
+        pcE <= interr ? 32'd0 : stall ? 32'd0 : pcD; // Передача
+        pcM <= interr ? 32'd0 : pcE; // Передача
     end
 end
 

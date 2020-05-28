@@ -1,5 +1,6 @@
 module cpu(
-    input clk, rst
+    input clk, rst,
+    input irq // внешнее прерывание
 );
 
 // Hazard Manager wires
@@ -26,16 +27,16 @@ hazard_mngr hazard_mngr(.rsDECO(rsDECO), .rtDECO(rtDECO),
                         .wriSigEXEC(wriSigEXEC), .wriSigMEMO(wriSigMEMO), .wriSigWRIT(wriSigWRIT),
                         .bypassD1(bypassD1), .bypassD2(bypassD2),
                         .bypassE1(bypassE1), .bypassE2(bypassE2),
-                        .JBEQ(JBEQ),
+                        .JBEQ(JBEQ), .BEQBNE(BEQBNE),
                         .flush(flush),
                         .stopCPU(stopCPU),
-                        .JAL(JAL), .J(J), .JR(JR),
+                        .JAL(JAL), .J(J), .JR(JR), .RFE(RFE),
                         .wriRegFromMemEXEC(wriRegFromMemEXEC), .wriRegFromMemMEMO(wriRegFromMemMEMO),
                         .stall(stall), .stop(stop));  
 
 data_path data_path(.clk(clk), .rst(rst),
-                    .JBEQ(JBEQ), .J(J), .JAL(JAL), .JR(JR), .RI(RI), .LW(LW), .SHIFT(SHIFT), .SRL(SRL),
-                    .writeReg(writeReg), .writeMem(writeMem), .readMem(readMem), .op(op),
+                    .JBEQ(JBEQ), .J(J), .JAL(JAL), .JR(JR), .RI(RI), .LW(LW), .SHIFT(SHIFT), .SRL(SRL), .RFE(RFE), .MFC(MFC),
+                    .writeReg(writeReg), .writeMem(writeMem), .readMem(readMem), .op(op), .wrongInst(wrongInst), .irq(irq),
                     .opcode(opcode), .funct(funct), .zero(zero),
                     .stall(stall), .stop(stop), .flush(flush), .stopCPU(stopCPU),
                     .bypassD1(bypassD1), .bypassD2(bypassD2),
@@ -47,9 +48,9 @@ data_path data_path(.clk(clk), .rst(rst),
 control_path control_path(  .clk(clk), .rst(rst),
                             .opcode(opcode), .funct(funct),
                             .zero(zero),
-                            .JBEQ(JBEQ), .J(J), .JAL(JAL), .JR(JR), .RI(RI), .LW(LW), .SHIFT(SHIFT), .SRL(SRL),
+                            .BEQBNE(BEQBNE), .JBEQ(JBEQ), .J(J), .JAL(JAL), .JR(JR), .RI(RI), .LW(LW), .SHIFT(SHIFT), .SRL(SRL), .RFE(RFE), .MFC(MFC),
                             .writeReg(writeReg), .writeMem(writeMem), .readMem(readMem),
-                            .op(op),
+                            .op(op), .wrongInst(wrongInst),
                             .stall(stall), .stop(stop),
                             .wriSigEXEC(wriSigEXEC), .wriSigMEMO(wriSigMEMO), .wriSigWRIT(wriSigWRIT),
                             .wriMemorySigEXEC(wriMemorySigEXEC), .wriMemorySigMEMO(wriMemorySigMEMO),

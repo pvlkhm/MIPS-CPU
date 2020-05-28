@@ -15,10 +15,10 @@ module hazard_mngr(
     output bypassD1, bypassD2,
     output reg [1:0] bypassE1, bypassE2,
     /* Управление предсказателем */
-    input JBEQ,
+    input JBEQ, BEQBNE,
     output flush,
     /* Управление остановкой конвейера */
-    input J, JR, JAL,
+    input J, JR, JAL, RFE,
     input wriRegFromMemEXEC, wriRegFromMemMEMO,
     output stall, stop
 );
@@ -48,7 +48,7 @@ assign bypassD2 = (rtDECO != 5'd0 && (rtDECO == wriRegMEMO && wriSigMEMO));
 // Т.к. она лишняя (Если произошло ветвление — BEQBNE сработал)
 // А также безусловно затирать при прыжках (J JAL JR) — т.к. успевает пртолкнуть одну инструкцию после
 // Если JAL — особенное внимание — нужно затирать только при выполнении JAL (А не пока оно стоит)
-assign flush = JBEQ || J || JR || (JAL && ~wriSigWRIT);
+assign flush = JBEQ || J || JR || (JAL && ~wriSigWRIT) || RFE;
 
 
 /* Управление остановкой конвейера */
@@ -61,9 +61,9 @@ assign flush = JBEQ || J || JR || (JAL && ~wriSigWRIT);
 // wriRegFromMemEXEC – признак команды читающий из MEMORY (А значит долгой) (lw)
 wire stallLW = (rsDECO == rtEXEC || rtDECO == rtEXEC) && wriRegFromMemEXEC;
 
-// Если JBEQ и 1. В EXECUTE арифметика с записью в регистр 2. В MEMORY LW с записью
-wire stallJBEQ_WITH_E = JBEQ && (rsDECO == wriRegEXEC || rtDECO == wriRegEXEC) && wriSigEXEC;
-wire stallJBEQ_WITH_M = JBEQ && (rsDECO == wriRegMEMO || rtDECO == wriRegMEMO) && wriRegFromMemMEMO;
+// Если BEQBNE и 1. В EXECUTE арифметика с записью в регистр 2. В MEMORY LW с записью
+wire stallJBEQ_WITH_E = BEQBNE && (rsDECO == wriRegEXEC || rtDECO == wriRegEXEC) && wriSigEXEC;
+wire stallJBEQ_WITH_M = BEQBNE && (rsDECO == wriRegMEMO || rtDECO == wriRegMEMO) && wriRegFromMemMEMO;
 wire stallJBEQ = stallJBEQ_WITH_E || stallJBEQ_WITH_M;
 
 // Остановка конвейера при записи из WRITEBACK
